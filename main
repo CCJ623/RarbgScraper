@@ -1,0 +1,58 @@
+import re, requests, time
+from bs4 import BeautifulSoup
+
+DOMAIN = 'https://proxyrarbg.org/torrents.php?search='
+KEY_WORD = 'jia lissa 1080 blacked'  # 关键词
+CATEGORY = '4'  # 分类
+# 每次使用前要先打开RARBG通过验证后替换这个COOKIE
+COOKIE = 'skt=soz25g1kbu; gaDts48g=q8h5pp9t; skt=soz25g1kbu; gaDts48g=q8h5pp9t; aby=2; tcc; cf_clearance=70prwdyvdrBpdFq8LiryWEtEKdJfuPP80IgeBvUDoD0-1674892855-0-150; expla=2; __cf_bm=Md7iXT8.E_MSHKwEJ4hp_9RxQO0oCKYlEanwNkErZCA-1674892871-0-Adyc+sCoKtl1bONOOSr4CwsdMRhWNVR8Wwco4jprGQQJI1TQLwUyvK6+gmSOvI/fgZDJWJGL4pKZ/7MFh07RX4mUU5gxrF43EtnGQkYMRKL/WLb7QmFLlAqqOty9as3GMgZtUrUo0LJNw/n26fQjvDE='
+USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36 Edg/109.0.1518.61'
+HEADERS = {'user-agent': USER_AGENT, 'cookie': COOKIE}
+pages = 1  # 需要的页数
+
+
+# 主函数
+def main():
+    magnet_list = []
+    for page in range(1, pages + 1):
+        main_page = get_main_page(page)
+        movie_url_list = get_movie_url(main_page)
+        for movie_url in movie_url_list:
+            magnet_list.append(get_magnet(movie_url))
+            time.sleep(1)  # 适当停顿防BAN
+    with open(KEY_WORD + '.txt', 'w') as f:
+        for magnet in magnet_list:
+            f.write(magnet + '\n')
+    print('程序运行成功')
+
+# 获取主页面
+def get_main_page(page):
+    payload = {'search': KEY_WORD, 'category': CATEGORY, 'page': page}
+    main_page = requests.get(DOMAIN, params=payload, headers=HEADERS)
+    return main_page
+
+# 获取影片页面链接
+def get_movie_url(main_page):
+    soup = BeautifulSoup(main_page.text,'lxml')
+    #print(soup)
+    find_movie_page = re.compile(r'(/torrent/[^#]*?)"')
+    #soup = BeautifulSoup(open('html.html'), 'lxml')
+    list = []
+    for i in soup.find_all('tr', class_='lista2'):
+        list.append(re.findall(find_movie_page, str(i))[0])
+    print('影片列表：')
+    print(list)
+    return list
+
+# 获取磁力链接
+def get_magnet(movie_url):
+    find_magnet = re.compile(r'href="(magnet.*?)"')
+    print('https://proxyrarbg.org' + movie_url)
+    movie_page = requests.get('https://proxyrarbg.org' + movie_url, headers=HEADERS)
+    soup = BeautifulSoup(movie_page.text, 'lxml')
+    magnet = re.findall(find_magnet, str(soup))[0]
+    print('找到磁力链接: ' + magnet)
+    return magnet
+
+
+main()
